@@ -1,0 +1,224 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          passenger
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: manage multiple passenger instances
+### END INIT INFO
+
+RVM_SHELL="/usr/local/bin/rvm-shell"
+
+PASSENGER_SYSTEM_BIN="passenger"
+
+PASSENGER_RVM_BIN="passenger"
+
+CONFIG_DIR="/etc/passenger.d"
+
+CONFIG_FILE_EXT=".yml"
+
+CONFIG_SHELL_OPTIONS=(
+  rvm
+  cwd
+)
+
+CONFIG_PASSENGER_OPTIONS=(
+  address
+  port
+  socket
+  environment
+  max-pool-size
+  min-instances
+  spawn-method
+  ping-port
+  user
+  log-file
+  pid-file
+  nginx-bin
+  nginx-version
+)
+
+CONFIG_OPTIONS=( "${CONFIG_SHELL_OPTIONS[@]}" "${CONFIG_PASSENGER_OPTIONS[@]}")
+
+##############################################################################
+
+get_config_option() {
+  name="config_${1//-/_}"
+  _RETURN="${!name}"
+}
+
+set_config_option() {
+  eval config_${1//-/_}='${2}'
+}
+
+init_config_options() {
+  local config_file="$CONFIG_DIR/${1}"
+
+  [ ! -f "$config_file" ] && echo "error: config file does not exist: $config_file" && return 1
+
+  for option in ${CONFIG_OPTIONS[@]}; do set_config_option $option ''; done
+
+  while read LINE; do
+    LINE=${LINE// /}
+    name=${LINE%%:*}
+    value=${LINE##*:}
+
+    for option in ${CONFIG_OPTIONS[@]}; do
+      [ "$option" = "$name" ] && set_config_option $name $value && break
+    done
+  done < "$config_file"
+
+  return 0
+}
+
+init_config_files() {
+  [ ! -d $CONFIG_DIR ] && echo "error: directory does not exist: $CONFIG_DIR" && exit 1
+
+  if [ $# -eq 0 ]; then
+    CONFIG_FILES=`cd ${CONFIG_DIR} && ls *${CONFIG_FILE_EXT}`
+  else
+    for app_name in "$@"; do
+      CONFIG_FILES="$CONFIG_FILES ${app_name}${CONFIG_FILE_EXT}"
+    done
+  fi
+}
+
+validate_config_options() {
+  local command=$1
+  local errors=()
+
+  [ -z "$config_cwd" ]      && errors=( "${errors[@]}" "cwd option is required"      )
+  [ -z "$config_pid_file" ] && errors=( "${errors[@]}" "pid-file option is required" )
+
+  case "$command" in
+  start)
+    [ -z "$config_user" ]        && errors=( "${errors[@]}" "user option is required"         )
+    [ -z "$config_environment" ] && errors=( "${errors[@]}" "environment option is required'" )
+  ;;
+  stop|status)
+  ;;
+  esac
+
+  local size=${#errors[*]}
+
+  for (( i=0; i<$size; i++ )); do
+    echo "config error: ${errors[$i]}"
+  done
+
+  return $size
+}
+
+get_passenger_options() {
+  local command=$1
+  local option=""
+
+  case $command in
+  start)
+    options="$config_cwd --daemonize"
+
+    for option in ${CONFIG_PASSENGER_OPTIONS[@]}; do
+      get_config_option $option
+      [ -n "$_RETURN" ] && options="$options --${option} ${_RETURN}"
+    done
+  ;;
+  stop|status)
+    options="--pid-file $config_cwd/$config_pid_file"
+  ;;
+  esac
+
+  _RETURN="$options"
+}
+
+passenger_ctl() {
+  local command=$1
+  local options=$2
+
+  if [ -z "$config_rvm" ]; then
+    argv="$PASSENGER_SYSTEM_BIN $command $options"
+  else
+    argv="$RVM_SHELL $config_rvm -c '$PASSENGER_RVM_BIN $command $options'"
+  fi
+
+  [ -n "$DEBUG" ] && echo $argv
+
+  eval $argv
+}
+
+passengers_ctl() {
+  local command=$1; shift
+
+  init_config_files "$@"
+
+  for config_file in ${CONFIG_FILES[@]}; do
+    echo "*** passenger $command ${config_file//$CONFIG_FILE_EXT}"
+
+    init_config_options "$config_file"
+    [ $? -eq 0 ] || continue
+
+    validate_config_options $command
+    [ $? -eq 0 ] || continue
+
+    get_passenger_options $command
+
+    passenger_ctl "$command" "$_RETURN"
+  done
+
+  return 0
+}
+
+enable_application() {
+  old="$1$CONFIG_FILE_EXT.disabled"
+  new="$1$CONFIG_FILE_EXT"
+  mv "$CONFIG_DIR/$old" "$CONFIG_DIR/$new"
+}
+
+disable_application() {
+  old="$1$CONFIG_FILE_EXT"
+  new="$1$CONFIG_FILE_EXT.disabled"
+  mv "$CONFIG_DIR/$old" "$CONFIG_DIR/$new"
+}
+
+setup() {
+  echo "Creating config directory: $CONFIG_DIR"
+  [ -d "$CONFIG_DIR" ] || mkdir "$CONFIG_DIR"
+
+  local config_file="${CONFIG_DIR}/example${CONFIG_FILE_EXT}.disabled"
+
+  echo "Creating config example: $config_file"
+  data=""
+  data+="rvm: ruby-1.9.2@example\n"
+  data+="cwd: /var/apps/blog/current\n"
+  data+="user: deploy\n"
+  data+="port: 8080\n"
+  data+="environment: production\n"
+  data+="max-pool-size: 4\n"
+  data+="min-instances: 1\n"
+  data+="pid-file: tmp/pids/passenger.pid\n"
+  data+="log-file: log/passenger.log"
+
+  echo -e "$data" > "$config_file"
+}
+##############################################################################
+
+[ $UID -eq 0 ] || exit 1
+
+case "$1" in
+  start|stop|status)
+    passengers_ctl "$@"
+  ;;
+
+  enable|disable)
+    $1_application "$2"
+  ;;
+
+  setup)
+    setup
+  ;;
+
+  *)
+   echo "Usage: $0 {start|stop|status|configure|enable|disable|setup} [app_name]"
+   exit 1
+  ;;
+esac
+
+exit 0
