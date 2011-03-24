@@ -12,7 +12,9 @@ Goals
 Installation
 ------------
 
-    sudo curl -k https://github.com/railsware/passenger-initscript/raw/master/passenger > /etc/init.d/passenger
+    cd /etc/init.d
+    sudo wget https://github.com/railsware/passenger-initscript/raw/master/passenger
+    sudo chmod +x passenger
 
     sudo /etc/init.d/passenger setup
 
