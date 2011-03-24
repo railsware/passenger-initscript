@@ -35,6 +35,14 @@ Usage
 
     sudo /etc/init.d/passenger stop
 
+### Restart all applications
+
+    sudo /etc/init.d/passenger restart
+
+### Reload all applications
+
+    sudo /etc/init.d/passenger reload
+
 ### Get applications status
 
     sudo /etc/init.d/passenger status
@@ -47,6 +55,14 @@ Usage
 
     sudo /etc/init.d/passenger stop blog forum
 
+### Restart certain applications
+
+    sudo /etc/init.d/passenger restart blog forum
+
+### Reload certain applications
+
+    sudo /etc/init.d/passenger restart blog forum
+
 ### Get status for certain applications
 
     sudo /etc/init.d/passenger status blog forum
@@ -58,3 +74,11 @@ Usage
 ### Disable application
 
     sudo /etc/init.d/passenger disable blog
+
+
+Notes
+-----
+
+* restart command stops and then starts passenger instances
+* reload or upgrade command graceful replaces passenger workers
+

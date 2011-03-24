@@ -87,8 +87,7 @@ validate_config_options() {
   local command=$1
   local errors=()
 
-  [ -z "$config_cwd" ]      && errors=( "${errors[@]}" "cwd option is required"      )
-  [ -z "$config_pid_file" ] && errors=( "${errors[@]}" "pid-file option is required" )
+  [ -z "$config_cwd" ] && errors=( "${errors[@]}" "cwd option is required" )
 
   case "$command" in
   start)
@@ -96,6 +95,12 @@ validate_config_options() {
     [ -z "$config_environment" ] && errors=( "${errors[@]}" "environment option is required'" )
   ;;
   stop|status)
+    [ -z "$config_pid_file" ] && errors=( "${errors[@]}" "pid-file option is required" )
+  ;;
+  restart)
+    [ -z "$config_user" ]        && errors=( "${errors[@]}" "user option is required"         )
+    [ -z "$config_environment" ] && errors=( "${errors[@]}" "environment option is required'" )
+    [ -z "$config_pid_file" ]    && errors=( "${errors[@]}" "pid-file option is required" )
   ;;
   esac
 
@@ -131,7 +136,10 @@ get_passenger_options() {
 
 passenger_ctl() {
   local command=$1
-  local options=$2
+
+  get_passenger_options $command
+
+  local options="$_RETURN"
 
   if [ -z "$config_rvm" ]; then
     argv="$PASSENGER_SYSTEM_BIN $command $options"
@@ -156,11 +164,25 @@ passengers_ctl() {
     [ $? -eq 0 ] || continue
 
     validate_config_options $command
-    [ $? -eq 0 ] || continue
+    [ $? -eq 0 ] || return 1
 
-    get_passenger_options $command
-
-    passenger_ctl "$command" "$_RETURN"
+    case $command in
+    reload|upgrade)
+      argv="touch $config_cwd/tmp/restart.txt"
+      [ -n "$DEBUG" ] && echo $argv
+      $argv
+    ;;
+    restart)
+      passenger_ctl "stop"
+      passenger_ctl "start"
+    ;;
+    start|stop|status)
+      passenger_ctl $command
+    ;;
+    *)
+      echo "Unknown command ${command}"
+    ;;
+    esac
   done
 
   return 0
@@ -203,7 +225,7 @@ setup() {
 [ $UID -eq 0 ] || exit 1
 
 case "$1" in
-  start|stop|status)
+  start|stop|status|restart|reload|upgrade)
     passengers_ctl "$@"
   ;;
 
@@ -216,7 +238,7 @@ case "$1" in
   ;;
 
   *)
-   echo "Usage: $0 {start|stop|status|configure|enable|disable|setup} [app_name]"
+   echo "Usage: $0 {start|stop|status|restart|reload|enable|disable|setup} [app_name]"
    exit 1
   ;;
 esac
