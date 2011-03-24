@@ -193,8 +193,8 @@ setup() {
   data+="environment: production\n"
   data+="max-pool-size: 4\n"
   data+="min-instances: 1\n"
-  data+="pid-file: tmp/pids/passenger.pid\n"
-  data+="log-file: log/passenger.log"
+  data+="pid-file: /var/apps/blog/current/tmp/pids/passenger.pid\n"
+  data+="log-file: /var/apps/blog/current/log/passenger.log"
 
   echo -e "$data" > "$config_file"
 }
