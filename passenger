@@ -122,7 +122,7 @@ get_passenger_options() {
     done
   ;;
   stop|status)
-    options="--pid-file $config_cwd/$config_pid_file"
+    options="--pid-file $config_pid_file"
   ;;
   esac
 
