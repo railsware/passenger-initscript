@@ -9,6 +9,8 @@
 
 RVM_SHELL="/usr/local/bin/rvm-shell"
 
+RVM_PATH="/usr/local/rvm"
+
 PASSENGER_SYSTEM_BIN="passenger"
 
 PASSENGER_RVM_BIN="passenger"
@@ -144,7 +146,7 @@ passenger_ctl() {
   if [ -z "$config_rvm" ]; then
     argv="$PASSENGER_SYSTEM_BIN $command $options"
   else
-    argv="$RVM_SHELL $config_rvm -c '$PASSENGER_RVM_BIN $command $options'"
+    argv="rvm_path=$RVM_PATH $RVM_SHELL $config_rvm -c '$PASSENGER_RVM_BIN $command $options'"
   fi
 
   [ -n "$DEBUG" ] && echo $argv
