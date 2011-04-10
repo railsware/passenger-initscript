@@ -24,6 +24,20 @@ Installation
 
 Edit configurations according to your needs.
 
+### Configuration file sample
+
+/etc/passenger/blog.yml
+
+    rvm: ruby-1.9.2@example
+    cwd: /var/apps/blog/current
+    user: deploy
+    port: 8080
+    environment: production
+    max-pool-size: 4
+    min-instances: 1
+    pid-file: /var/apps/blog/current/tmp/pids/passenger.pid
+    log-file: /var/apps/blog/current/log/passenger.log
+
 Usage
 -----
 
