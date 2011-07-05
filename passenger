@@ -224,7 +224,7 @@ setup() {
 }
 ##############################################################################
 
-[ $UID -eq 0 ] || exit 1
+[ "$UID" -ne 0 ] && echo "You should run this script as a root " && exit 1
 
 case "$1" in
   start|stop|status|restart|reload|upgrade)
