@@ -7,7 +7,7 @@
 # Short-Description: manage multiple passenger instances
 ### END INIT INFO
 
-RVM_SHELL="/usr/local/rvm/bin/rvm-shell"
+RVM_SHELL="/usr/local/bin/rvm-shell"
 
 RVM_PATH="/usr/local/rvm"
 
