@@ -8,6 +8,8 @@ Goals
 * muliple passenger standalone instances
 * rvm support
 * yaml application configuration
+* autostart
+* run instances as www-data
 
 Installation
 ------------
@@ -30,8 +32,8 @@ Edit configurations according to your needs.
 
     rvm: ruby-1.9.2@example
     cwd: /var/apps/blog/current
-    user: deploy
-    port: 8080
+    user: www-data
+    port: 3000
     environment: production
     max-pool-size: 4
     min-instances: 1
@@ -88,6 +90,17 @@ Usage
 ### Disable application
 
     sudo /etc/init.d/passenger disable blog
+
+Start up on system-start (ubuntu)
+------------
+On ubuntu Linux make your passenger instances start-up at system start up, add the passenger-script to to start-ups scripts:
+    
+    sudo update-rc.d passenger defaults 
+
+I get some errors messages, but it seem to be safe to ignore them:
+
+> update-rc.d: warning: /etc/init.d/passenger missing LSB keyword 'required-start'
+> update-rc.d: warning: /etc/init.d/passenger missing LSB keyword 'required-stop'
 
 
 Notes
