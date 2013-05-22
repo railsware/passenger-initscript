@@ -9,6 +9,11 @@
 # Short-Description: manage multiple passenger instances
 ### END INIT INFO
 
+#comment out to disable debug mode
+#DEBUG="TRUE"
+#uncomment to use personal rvm of the user given in the service config
+#USER_RVM="TRUE"
+
 RVM_SHELL="rvm-shell"
 
 [ -x /usr/local/bin/rvm-shell ] && RVM_SHELL="/usr/local/bin/rvm-shell"
@@ -148,6 +153,14 @@ passenger_ctl() {
   get_passenger_options $command
 
   local options="$_RETURN"
+
+  if [ -n "$USER_RVM" ]; then
+    get_config_option user
+    user_from_config=$_RETURN
+    user_from_config_home=$(eval "echo ~$user_from_config")
+    RVM_PATH="$user_from_config_home/.rvm"
+    RVM_SHELL="$RVM_PATH/bin/rvm-shell"
+  fi
 
   if [ -z "$config_rvm" ]; then
     argv="$PASSENGER_SYSTEM_BIN $command $options"
