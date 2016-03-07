@@ -49,6 +49,10 @@ CONFIG_PASSENGER_OPTIONS=(
   pid-file
   nginx-bin
   nginx-version
+  ssl
+  ssl-port
+  ssl-certificate
+  ssl-certificate-key
 )
 
 CONFIG_OPTIONS=( "${CONFIG_SHELL_OPTIONS[@]}" "${CONFIG_PASSENGER_OPTIONS[@]}")
