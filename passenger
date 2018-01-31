@@ -9,13 +9,9 @@
 # Short-Description: manage multiple passenger instances
 ### END INIT INFO
 
-RVM_SHELL="rvm-shell"
+DEFAULT_RVM_SHELL="rvm-shell"
 
-[ -x /usr/local/bin/rvm-shell ] && RVM_SHELL="/usr/local/bin/rvm-shell"
-
-[ -x /usr/local/rvm/bin/rvm-shell ] && RVM_SHELL="/usr/local/rvm/bin/rvm-shell"
-
-RVM_PATH="/usr/local/rvm"
+SYSTEM_RVM_PATH="/usr/local/rvm"
 
 PASSENGER_SYSTEM_BIN="passenger"
 
@@ -27,6 +23,8 @@ CONFIG_FILE_EXT=".yml"
 
 CONFIG_SHELL_OPTIONS=(
   rvm
+  rvm-type
+  rvm-path
   cwd
 )
 
@@ -80,7 +78,28 @@ init_config_options() {
     done
   done < "$config_file"
 
+  process_rvm_config
+
   return 0
+}
+
+process_rvm_config() {
+  # set default rvm type (system or user)
+  if [ ! -z "$config_rvm" ] && [ -z "$config_rvm_path" ]; then
+    : "${config_rvm_type:=system}"
+    case "$config_rvm_type" in
+    system)
+      config_rvm_path="$SYSTEM_RVM_PATH"
+      ;;
+    user)
+      config_rvm_path="$(eval echo ~$config_user)/.rvm"
+      ;;
+    esac
+  fi
+
+  : "${config_rvm_shell:=$DEFAULT_RVM_SHELL}"
+  [ -x "/usr/local/bin/rvm-shell" ] && config_rvm_shell="/usr/local/bin/rvm-shell"
+  [ -x "$config_rvm_path/bin/rvm-shell" ] && config_rvm_shell="$config_rvm_path/bin/rvm-shell"
 }
 
 init_config_files() {
@@ -95,6 +114,7 @@ init_config_files() {
   fi
 }
 
+
 validate_config_options() {
   local command=$1
   local errors=()
@@ -105,6 +125,9 @@ validate_config_options() {
   start)
     [ -z "$config_user" ]        && errors=( "${errors[@]}" "user option is required"         )
     [ -z "$config_environment" ] && errors=( "${errors[@]}" "environment option is required'" )
+    if [ ! -z "$config_rvm" ] && [ "$config_rvm_type" != "system" ] && [ "$config_rvm_type" != "user" ]; then
+      errors=( "${errors[@]}" "rvm-type should be one of system|user" )
+    fi
   ;;
   stop|status)
     [ -z "$config_pid_file" ] && errors=( "${errors[@]}" "pid-file option is required" )
@@ -113,6 +136,9 @@ validate_config_options() {
     [ -z "$config_user" ]        && errors=( "${errors[@]}" "user option is required"         )
     [ -z "$config_environment" ] && errors=( "${errors[@]}" "environment option is required'" )
     [ -z "$config_pid_file" ]    && errors=( "${errors[@]}" "pid-file option is required" )
+    if [ ! -z "$config_rvm" ] && [ "$config_rvm_type" != "system" ] && [ "$config_rvm_type" != "user" ]; then
+      errors=( "${errors[@]}" "rvm-type should be one of system|user" )
+    fi
   ;;
   esac
 
@@ -156,7 +182,7 @@ passenger_ctl() {
   if [ -z "$config_rvm" ]; then
     argv="$PASSENGER_SYSTEM_BIN $command $options"
   else
-    argv="rvm_path=$RVM_PATH $RVM_SHELL $config_rvm -c '$PASSENGER_RVM_BIN $command $options'"
+    argv="rvm_path=$config_rvm_path $config_rvm_shell $config_rvm -c '$PASSENGER_RVM_BIN $command $options'"
   fi
 
   [ -n "$DEBUG" ] && echo $argv
@@ -221,6 +247,8 @@ setup() {
   echo "Creating config example: $config_file"
   data=""
   data+="rvm: ruby-1.9.2@example\n"
+  data+="rvm-type: user\n"
+  data+="rvm-path: /path/to/rvm\n"
   data+="cwd: /var/apps/blog/current\n"
   data+="user: deploy\n"
   data+="port: 8080\n"

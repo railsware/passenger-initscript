@@ -29,6 +29,8 @@ Edit configurations according to your needs.
 /etc/passenger/blog.yml
 
     rvm: ruby-1.9.2@example
+    rvm-type: user
+    rvm-path: /path/to/rvm
     cwd: /var/apps/blog/current
     user: deploy
     port: 8080
